@@ -2,6 +2,9 @@
 import { useState,useEffect } from 'react'
 import './App.css'
 
+ 
+DataTable.use(DT);
+
 function App() {
   const [book, setbook] = useState([]);
   const [id, setId] = useState('');
@@ -31,20 +34,23 @@ function App() {
   }, [])
   
   const handleSubmit = () => {
-  if (!id || !name || !price || !amount) {
+  if (!name || !price || !amount) {
     alert("所有欄位皆為必填，請確認輸入資料");
     return;
   }
 
   const newBook = {
-    id,
     name,
     price: Number(price),
     amount: Number(amount),
     pub
-  };
+    
+  }
+  ;
+  if (isEditing) {
+  newBook.id = id; // 編輯時才送 id
+  }
 
-  // 以下略過，保持原來邏輯
 
 
   if (isEditing) {
@@ -118,11 +124,10 @@ function App() {
       <div>
         <legend>{isEditing ? "編輯書籍" : "新增書籍"}</legend>
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-                id: <input name="id" type="number" value={id} onChange={(e) => setId(e.target.value)} disabled={isEditing} required /><p/>
               書名: <input name="name" value={name} onChange={(e) => setName(e.target.value)} required /><p/>
               價格: <input name="price" value={price} onChange={(e) => setPrice(e.target.value)} required /><p/>
               數量: <input name="amount" value={amount} onChange={(e) => setAmount(e.target.value)} required /><p/>
-              出刊: <input type="checkbox" checked={pub} onChange={(e) => setPub(e.target.checked)} required /><p/>
+              出刊: <input type="checkbox" checked={pub} onChange={(e) => setPub(e.target.checked)} /><p/>
              <button type="submit">{isEditing ? "更新" : "新增"}</button>
            {isEditing && <button type="button" onClick={clearForm}>取消編輯</button>}
         </form>
