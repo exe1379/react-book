@@ -9,6 +9,7 @@ function App() {
   const [price, setPrice] = useState('');
   const [amount, setAmount] = useState('');
   const [pub, setPub] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // 判斷是否為編輯模式
 
   useEffect(() => {
     fetch("http://localhost:8080/book")
@@ -29,7 +30,12 @@ function App() {
       });
   }, [])
   
-  const handleAdd = () => {
+  const handleSubmit = () => {
+  if (!id || !name || !price || !amount) {
+    alert("所有欄位皆為必填，請確認輸入資料");
+    return;
+  }
+
   const newBook = {
     id,
     name,
@@ -38,28 +44,44 @@ function App() {
     pub
   };
 
-  fetch("http://localhost:8080/book", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(newBook)
-  })
-    .then(res => res.json())
-    .then(result => {
-      const addedBook = result.data; // 後端 ApiResponse 回傳的書籍
-      setbook([...book, addedBook]); // ✅ 更新前端畫面
-      // ✅ 清空輸入欄位
-      setId("");
-      setName("");
-      setPrice("");
-      setAmount("");
-      setPub(false);
+  // 以下略過，保持原來邏輯
+
+
+  if (isEditing) {
+    // 編輯模式下使用 PUT
+    fetch(`http://localhost:8080/book/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newBook)
     })
-    .catch(err => {
-      console.error("新增失敗", err);
-    });
+      .then(res => res.json())
+      .then(result => {
+        const updatedBook = result.data;
+        setbook(book.map(b => (b.id === updatedBook.id ? updatedBook : b)));
+        clearForm();
+      })
+      .catch(err => {
+        console.error("更新失敗", err);
+      });
+  } else {
+    // 新增模式下使用 POST
+    fetch("http://localhost:8080/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newBook)
+    })
+      .then(res => res.json())
+      .then(result => {
+        const addedBook = result.data;
+        setbook([...book, addedBook]);
+        clearForm();
+      })
+      .catch(err => {
+        console.error("新增失敗", err);
+      });
+  }
 };
+
   const handleDelete = (id) => {
     fetch(`http://localhost:8080/book/${id}`, { method: "DELETE" })
     .then(res => {
@@ -73,18 +95,38 @@ function App() {
     });
   }
 
+  const handleEdit = (bookToEdit) => {
+  setId(bookToEdit.id);
+  setName(bookToEdit.name);
+  setPrice(bookToEdit.price);
+  setAmount(bookToEdit.amount);
+  setPub(bookToEdit.pub);
+  setIsEditing(true);
+};
+  const clearForm = () => {
+  setId('');
+  setName('');
+  setPrice('');
+  setAmount('');
+  setPub(false);
+  setIsEditing(false);
+};
+  
+
   return (
     <>
       <div>
-        <legend>新增書籍</legend>
-        <form>
-          id: <input name="id" value={id} onChange={(e) => setId(e.target.value)}/><p/>
-          書名: <input name="name" value={name} onChange={(e) => setName(e.target.value)}/><p/>
-          價格: <input name="price" value={price} onChange={(e) => setPrice(e.target.value)}/><p/>
-          數量: <input name="amount" value={amount} onChange={(e) => setAmount(e.target.value)}/><p/>
-          出刊: <input type='checkbox' name="pub" value={pub} onChange={(e) => setPub(e.target.value)}/><p/>
-          <button type="submit" onClick={handleAdd}>新增</button>
+        <legend>{isEditing ? "編輯書籍" : "新增書籍"}</legend>
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+                id: <input name="id" type="number" value={id} onChange={(e) => setId(e.target.value)} disabled={isEditing} required /><p/>
+              書名: <input name="name" value={name} onChange={(e) => setName(e.target.value)} required /><p/>
+              價格: <input name="price" value={price} onChange={(e) => setPrice(e.target.value)} required /><p/>
+              數量: <input name="amount" value={amount} onChange={(e) => setAmount(e.target.value)} required /><p/>
+              出刊: <input type="checkbox" checked={pub} onChange={(e) => setPub(e.target.checked)} required /><p/>
+             <button type="submit">{isEditing ? "更新" : "新增"}</button>
+           {isEditing && <button type="button" onClick={clearForm}>取消編輯</button>}
         </form>
+
           <h2>📖 書籍列表</h2>
       <table border="1" cellPadding="4">
         <thead>
@@ -98,16 +140,16 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {book.map((book,index) => (
-             <tr key={index}>
+          {book.map((book) => (
+            <tr key={book.id}>
             <td>{book.id}</td>
             <td>{book.name}</td>
             <td>{book.price}</td>
             <td>{book.amount}</td>
             <td>{book.pub ? "出版" : "未出版"}</td>
             <td>
-              <button type='button'>編輯</button>
-              <button type='button' onClick={() => handleDelete(book.id)}>刪除</button>
+              <button type="button" onClick={() => handleEdit(book)}>編輯</button>
+              <button type="button" onClick={() => handleDelete(book.id)}>刪除</button>
             </td>
           </tr>))}
         </tbody>
